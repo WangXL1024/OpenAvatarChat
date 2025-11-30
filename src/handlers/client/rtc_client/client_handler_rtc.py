@@ -77,7 +77,8 @@ def _configure_h264_hardware_encoding():
 
         if self.codec is None:
             # Try to create encoder, fallback to software encoder if hardware fails
-            encoder_to_use = _selected_h264_encoder
+            #encoder_to_use = _selected_h264_encoder
+            encoder_to_use = "libx264"
             codec_created = False
             
             try:

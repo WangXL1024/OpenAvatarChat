@@ -12,6 +12,11 @@ default:
       - "src/handlers"
     handler_configs:
       RtcClient:
+        turn_config:
+          turn_provider: "turn_server"
+          urls: ["turn:169.63.100.185:3478", "turns:169.63.100.185:5349"]
+          username: "xiuyz"
+          credential: "admin"
         module: client/rtc_client/client_handler_rtc
         # max time a session will last for
         connection_ttl: 900
@@ -31,9 +36,9 @@ default:
         module: tts/cosyvoice/tts_handler_cosyvoice
         # api_url: 'http://127.0.0.1:50000/inference_sft' #run CosyVoice/runtime/python/fastapi/server.py
         model_name: "iic/CosyVoice-300M-SFT" # run cosyvoice in code
-        spk_id: "中文女" # use sft model
-        # ref_audio_path: "open-video-chat/src/third_party/CosyVoice/asset/zero_shot_prompt.wav" #use zero_shot model
-        # ref_audio_text: "希望你以后能够做的比我还好呦。"
+        #spk_id: "中文女" # use sft model
+        ref_audio_path: "/core/dt_avatar/code/cosyvoice_ref_audio/sft_longshu_en.wav" #use zero_shot model
+        ref_audio_text: "These include various sports events including soccer, basketball, and volleyball tournaments."
         sample_rate: 24000
         process_num: 2
       LLMOpenAICompatible:
@@ -43,11 +48,11 @@ default:
         enable_video_input: False # ensure your llm support video input
         history_length: 20
         # model_name: "gemini-2.0-flash"
-        system_prompt: "请你扮演一个 AI 助手，用简短的两三句对话来回答用户的问题，并在对话内容中加入合适的标点符号，不需要讨论标点符号相关的内容"
+        system_prompt: "Please act as an AI assistant. Answer users' questions in 2-3 concise sentences with appropriate punctuation (no need to discuss punctuation itself). If the user communicates in English, respond in English accordingly."
         api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
         # api_url: 'http://127.0.0.1:11434/v1' # ollama
         # api_url: 'https://generativelanguage.googleapis.com/v1beta/openai/'
-        # api_key: '' # default=os.getenv("DASHSCOPE_API_KEY")
+        api_key: 'sk-12574d385818460c84a759673209981a' # default=os.getenv("DASHSCOPE_API_KEY")
       LiteAvatar:
         module: avatar/liteavatar/avatar_handler_liteavatar
         avatar_name: 20250408/sample_data

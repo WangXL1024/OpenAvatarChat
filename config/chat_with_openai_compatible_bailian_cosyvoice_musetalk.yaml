@@ -13,6 +13,11 @@ default:
       - "src/handlers"
     handler_configs:
       RtcClient:
+        turn_config:
+          turn_provider: "turn_server"
+          urls: ["turn:169.63.100.185:3478", "turns:169.63.100.185:5349"]
+          username: "xiuyz"
+          credential: "admin"
         module: client/rtc_client/client_handler_rtc
         # max time a session will last for
         connection_ttl: 900
@@ -32,7 +37,7 @@ default:
         module: tts/bailian_tts/tts_handler_cosyvoice_bailian
         voice: "longxiaochun"
         model_name: "cosyvoice-v1"
-        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+        api_key: "sk-12574d385818460c84a759673209981a" # default=os.getenv("DASHSCOPE_API_KEY")
       LLMOpenAICompatible:
         enabled: True
         module: llm/openai_compatible/llm_handler_openai_compatible
@@ -44,7 +49,7 @@ default:
         api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
         # api_url: 'http://127.0.0.1:11434/v1' # ollama
         # api_url: 'https://generativelanguage.googleapis.com/v1beta/openai/'
-        # api_key: "" # default=os.getenv("DASHSCOPE_API_KEY")
+        api_key: "sk-12574d385818460c84a759673209981a" # default=os.getenv("DASHSCOPE_API_KEY")
       AvatarMusetalk:
         module: avatar/musetalk/avatar_handler_musetalk
         fps: 20  # Video frame rate

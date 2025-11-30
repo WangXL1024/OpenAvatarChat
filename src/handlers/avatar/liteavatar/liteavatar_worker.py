@@ -159,8 +159,8 @@ class LiteAvatarWorker:
         # Calculate maximum buffer sizes
         self.max_audio_size = 24000 * 2 * 1  # sample_rate * bytes_per_sample * max_seconds (1秒)
         self.max_video_size = 1920 * 1080 * 3  # max_width * max_height * channels
-        self.audio_pool_size = 10
-        self.video_pool_size = 10
+        self.audio_pool_size = 20
+        self.video_pool_size = 20
         
         self._init_shared_memory_pool()
         self._start_avatar_process()
