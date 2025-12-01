@@ -21,4 +21,4 @@
 	url = https://github.com/TMElyralab/MuseTalk.git
 [submodule "src/handlers/client/rtc_client/frontend"]
 	path = src/handlers/client/rtc_client/frontend
-	url = https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI.git
+	url = git@github.com:WangXL1024/OpenAvatarChat-WebUI.git
