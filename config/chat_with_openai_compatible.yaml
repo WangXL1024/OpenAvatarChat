@@ -49,7 +49,7 @@ default:
         enable_video_input: False # ensure your llm support video input
         history_length: 20
         # model_name: "gemini-2.0-flash"
-        system_prompt: "Please act as an AI assistant. Answer users' questions in 2-3 concise sentences with appropriate punctuation (no need to discuss punctuation itself). If the user communicates in English, respond in English accordingly."
+        system_prompt: "Please act as an AI assistant. Answer users' questions in 2-3 concise sentences, incorporating appropriate punctuation (no need to discuss punctuation itself). Ensure your responses are in the same language as the user's question."
         api_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
         # api_url: 'http://127.0.0.1:11434/v1' # ollama
         # api_url: 'https://generativelanguage.googleapis.com/v1beta/openai/'

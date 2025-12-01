@@ -31,7 +31,8 @@ default:
       SenseVoice:
         enabled: True
         module: asr/sensevoice/asr_handler_sensevoice
-        model_name: "iic/SenseVoiceSmall"
+        model_name: "iic/Whisper-large-v3-turbo"
+        #model_name: "iic/SenseVoiceSmall"
       CosyVoice:
         enabled: True
         module: tts/cosyvoice/tts_handler_cosyvoice
