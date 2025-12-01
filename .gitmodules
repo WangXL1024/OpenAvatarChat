@@ -22,3 +22,4 @@
 [submodule "src/handlers/client/rtc_client/frontend"]
 	path = src/handlers/client/rtc_client/frontend
 	url = git@github.com:WangXL1024/OpenAvatarChat-WebUI.git
+	branch = main
