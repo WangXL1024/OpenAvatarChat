@@ -38,8 +38,8 @@ default:
         # api_url: 'http://127.0.0.1:50000/inference_sft' #run CosyVoice/runtime/python/fastapi/server.py
         model_name: "iic/CosyVoice-300M-SFT" # run cosyvoice in code
         #spk_id: "中文女" # use sft model
-        ref_audio_path: "/core/dt_avatar/code/cosyvoice_ref_audio/recording_20251202_082215.wav" #use zero_shot model
-        ref_audio_text: "Hello,can you hear me?"
+        ref_audio_path: "/core/dt_avatar/code/cosyvoice_ref_audio/sft_longshu_en.wav" #use zero_shot model
+        ref_audio_text: "These include various sports events including soccer, basketball, and volleyball tournaments."
         sample_rate: 24000
         process_num: 2
       LLMOpenAICompatible:
