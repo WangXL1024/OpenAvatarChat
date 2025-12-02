@@ -34,14 +34,10 @@ default:
         #model_name: "iic/SenseVoiceSmall"
       CosyVoice:
         enabled: True
-        module: tts/cosyvoice/tts_handler_cosyvoice
-        # api_url: 'http://127.0.0.1:50000/inference_sft' #run CosyVoice/runtime/python/fastapi/server.py
-        model_name: "iic/CosyVoice-300M-SFT" # run cosyvoice in code
-        #spk_id: "中文女" # use sft model
-        ref_audio_path: "/core/dt_avatar/code/cosyvoice_ref_audio/sft_longshu_en.wav" #use zero_shot model
-        ref_audio_text: "These include various sports events including soccer, basketball, and volleyball tournaments."
-        sample_rate: 24000
-        process_num: 2
+        module: tts/bailian_tts/tts_handler_cosyvoice_bailian
+        voice: "cosyvoice-v2-cusmale-b3a18d5660d243abb1fc12c75ce85747"
+        model_name: "cosyvoice-v2"
+        api_key: "sk-12574d385818460c84a759673209981a" # default=os.getenv("DASHSCOPE_API_KEY")
       LLMOpenAICompatible:
         enabled: True
         module: llm/openai_compatible/llm_handler_openai_compatible
