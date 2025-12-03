@@ -112,6 +112,8 @@ class HandlerTTS(HandlerBase, ABC):
     # add by wangxl@20251203 for get user voice setting from user_settings.json
     @staticmethod
     def get_user_setting(user_id: str = "default_user", settings_file: str = "user_settings.json") -> str | None:
+        import json
+        import os
         """
         从 user_settings.json 中读取指定用户的配置值（声音ID）
         
