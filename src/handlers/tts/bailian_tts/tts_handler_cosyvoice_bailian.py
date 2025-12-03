@@ -173,9 +173,9 @@ class HandlerTTS(HandlerBase, ABC):
         
     def handle(self, context: HandlerContext, inputs: ChatData,
                output_definitions: Dict[ChatDataType, HandlerDataInfo]):
-        print(">>>>>>>>>>>>>>>>>>>>>>>change the voice id<<<<<<<<<<<<<<<<<<<<<<")
         user_voice = get_user_setting("default_user")
         self.voice = user_voice if user_voice is not None else self.voice
+        print(f">>>>>>>>>>>>>>>>>>>>>>>change the voice id{self.voice}<<<<<<<<<<<<<<<<<<<<<<")
         output_definition = output_definitions.get(ChatDataType.AVATAR_AUDIO).definition
         context = cast(TTSContext, context)
         if inputs.type == ChatDataType.AVATAR_TEXT:
