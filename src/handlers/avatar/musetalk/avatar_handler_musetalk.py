@@ -274,8 +274,8 @@ class HandlerAvatarMusetalk(HandlerBase):
 
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
-        handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        self.load('',handler_config)
+        # handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        # self.load('',handler_config)
         """
         Create and start session context.
         """
