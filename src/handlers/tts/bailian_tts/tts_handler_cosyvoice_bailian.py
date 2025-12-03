@@ -110,6 +110,7 @@ class HandlerTTS(HandlerBase, ABC):
         return filtered_text
 
     # add by wangxl@20251203 for get user voice setting from user_settings.json
+    @staticmethod
     def get_user_setting(user_id: str = "default_user", settings_file: str = "user_settings.json") -> str | None:
         """
         从 user_settings.json 中读取指定用户的配置值（声音ID）
@@ -173,7 +174,7 @@ class HandlerTTS(HandlerBase, ABC):
         
     def handle(self, context: HandlerContext, inputs: ChatData,
                output_definitions: Dict[ChatDataType, HandlerDataInfo]):
-        user_voice = get_user_setting("default_user")
+        user_voice = self.get_user_setting("default_user")
         self.voice = user_voice if user_voice is not None else self.voice
         print(f">>>>>>>>>>>>>>>>>>>>>>>change the voice id{self.voice}<<<<<<<<<<<<<<<<<<<<<<")
         output_definition = output_definitions.get(ChatDataType.AVATAR_AUDIO).definition
