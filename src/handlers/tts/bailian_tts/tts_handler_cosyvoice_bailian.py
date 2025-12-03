@@ -78,7 +78,7 @@ class HandlerTTS(HandlerBase, ABC):
 
     def load(self, engine_config: ChatEngineConfigModel, handler_config: Optional[BaseModel] = None):
         config = cast(TTSConfig, handler_config)
-        print(">>>>>>>>>>>>>>>>>>Bailian TTS Handler loaded>>>>>>>>>>>>>>>>")
+        print(">>>>>>>>>>>>>>>>>>Bailian TTS Handler loaded(Just one time)<<<<<<<<<<<<<<<<<<")
         self.voice = config.voice
         self.sample_rate = config.sample_rate
         self.ref_audio_path = config.ref_audio_path
@@ -111,6 +111,8 @@ class HandlerTTS(HandlerBase, ABC):
 
     def handle(self, context: HandlerContext, inputs: ChatData,
                output_definitions: Dict[ChatDataType, HandlerDataInfo]):
+        print(">>>>>>>>>>>>>>>>>>>>>>>change the voice id<<<<<<<<<<<<<<<<<<<<<<")
+        self.voice = "cosyvoice-v2-cusfemale-2efcf55598404c3ab5779657ddd4ebcc"
         output_definition = output_definitions.get(ChatDataType.AVATAR_AUDIO).definition
         context = cast(TTSContext, context)
         if inputs.type == ChatDataType.AVATAR_TEXT:
