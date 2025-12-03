@@ -62,7 +62,7 @@ default:
         module: avatar/musetalk/avatar_handler_musetalk
         fps: 20  # Video frame rate
         batch_size: 2  # Batch processing frame count, must be greater than 2
-        avatar_video_path: "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Male.mp4"  # Initialization video path
+        avatar_video_path: "/core/dt_avatar/code/OpenAvatarChat/resource/avatar/liteavatar/20250408/P1aYo3AtWKIcwQR6HoDCcmIQ/bg_video_silence.mp4"  # Initialization video path
         avatar_model_dir: "models/musetalk/avatar_model"  # Default avatar model directory
         force_create_avatar: false  # Whether to force regenerate digital human data
         debug: false  # Whether to enable debug mode
