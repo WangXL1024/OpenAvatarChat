@@ -274,6 +274,7 @@ class HandlerAvatarMusetalk(HandlerBase):
 
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
+        self.load('',handler_config)
         """
         Create and start session context.
         """
