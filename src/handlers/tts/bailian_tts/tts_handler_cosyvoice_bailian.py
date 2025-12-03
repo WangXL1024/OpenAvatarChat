@@ -78,6 +78,7 @@ class HandlerTTS(HandlerBase, ABC):
 
     def load(self, engine_config: ChatEngineConfigModel, handler_config: Optional[BaseModel] = None):
         config = cast(TTSConfig, handler_config)
+        print(">>>>>>>>>>>>>>>>>>Bailian TTS Handler loaded>>>>>>>>>>>>>>>>")
         self.voice = config.voice
         self.sample_rate = config.sample_rate
         self.ref_audio_path = config.ref_audio_path
