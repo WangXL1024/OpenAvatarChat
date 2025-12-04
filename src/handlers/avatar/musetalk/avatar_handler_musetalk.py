@@ -284,7 +284,13 @@ class HandlerAvatarMusetalk(HandlerBase):
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
         print("*******************************")
-        print(self.processor._avatar.__dict__)
+        print(self.processor._avatar.avatar_id)
+        print(self.processor._avatar.video_path)
+        print(self.processor._avatar.result_dir)
+        print(self.processor._avatar.vae_type)
+        print(self.processor._avatar.unet_model_path)
+        print(self.processor._avatar.unet_config)
+        print(self.processor._avatar.whisper_dir)
         print("*******************************")
         self.shared_state = session_context.shared_states
         self.processor.audio_output_queue = self.audio_out_queue
