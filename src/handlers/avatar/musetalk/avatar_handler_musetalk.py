@@ -289,8 +289,17 @@ class HandlerAvatarMusetalk(HandlerBase):
         
         # 释放旧实例资源（终止线程、清理缓存）
         if self.processor is not None:
-            self.processor.stop()  # 确保处理器停止所有后台线程
-            self.processor = None
+            self.processor.stop()  # 调用processor的stop方法终止线程
+            # 额外清理队列（防止stop方法未完全清空）
+            self.processor._clear_queues()
+            # 手动置空所有线程引用（避免循环引用导致GC失败）
+            self.processor._feature_thread = None
+            self.processor._frame_gen_thread = None
+            self.processor._frame_gen_unet_thread = None
+            self.processor._frame_gen_vae_thread = None
+            self.processor._frame_collect_thread = None
+            self.processor._compose_thread = None
+            self.processor = None  # 释放processor实例
         if self.avatar is not None:
             # 清理旧数字人的缓存目录（如果需要）
             if hasattr(self.avatar, 'avatar_path') and os.path.exists(self.avatar.avatar_path):
