@@ -22,6 +22,7 @@ from handlers.avatar.musetalk.avatar_musetalk_processor import AvatarMuseTalkPro
 from handlers.avatar.musetalk.avatar_musetalk_algo import MuseAvatarV15
 from handlers.avatar.musetalk.avatar_musetalk_config import AvatarMuseTalkConfig
 from engine_utils.general_slicer import slice_data, SliceContext
+from chat_engine.core.handler_manager import HandlerManager
 
 
 # Context class for MuseTalk avatar handler
@@ -275,7 +276,7 @@ class HandlerAvatarMusetalk(HandlerBase):
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
         handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        # self.load('',handler_config)
+        self.load('',handler_config)
         """
         Create and start session context.
         """
