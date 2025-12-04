@@ -275,31 +275,73 @@ class HandlerAvatarMusetalk(HandlerBase):
 
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
-        handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        self.avatar = None
-        self.processor = None
-        self.load('',handler_config)
+        # handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        # self.load('',handler_config)
         """
         Create and start session context.
         """
         logger.info(f"HandlerAvatarMusetalk.create_context called, session_context={session_context}, handler_config={handler_config}")
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
-        # print("*******************************")
-        # print(self.processor._avatar.avatar_id)
-        # print(self.processor._avatar.video_path)
-        # print(self.processor._avatar.result_dir)
-        # print(self.processor._avatar.vae_type)
-        # print(self.processor._avatar.unet_model_path)
-        # print(self.processor._avatar.unet_config)
-        # print(self.processor._avatar.whisper_dir)
-        # print("*******************************")
-        # new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        # new_video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
-        # new_video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
-        # new_auto_avatar_id = f"avatar_{new_video_basename}_{new_video_hash}"
-        # self.processor._avatar.avatar_id = new_auto_avatar_id
-        # self.processor._avatar.video_path = new_video_path
+        # 关键：更新 handler_config 的视频路径（使用新的数字人视频）
+        new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        handler_config.avatar_video_path = new_video_path  # 覆盖配置中的路径
+        
+        # 释放旧实例资源（终止线程、清理缓存）
+        if self.processor is not None:
+            self.processor.stop()  # 确保处理器停止所有后台线程
+            self.processor = None
+        if self.avatar is not None:
+            # 清理旧数字人的缓存目录（如果需要）
+            if hasattr(self.avatar, 'avatar_path') and os.path.exists(self.avatar.avatar_path):
+                import shutil
+                shutil.rmtree(self.avatar.avatar_path, ignore_errors=True)
+            self.avatar = None
+        
+        # 重新初始化 avatar 和 processor（复用 load 中的逻辑，但避免重复调用 load）
+        project_root = os.getcwd()
+        model_dir = os.path.join(project_root, handler_config.model_dir)
+        vae_type = "sd-vae"
+        unet_model_path = os.path.join(model_dir, "musetalkV15", "unet.pth")
+        unet_config = os.path.join(model_dir, "musetalkV15", "musetalk.json")
+        whisper_dir = os.path.join(model_dir, "whisper")
+        result_dir = os.path.join(project_root, handler_config.avatar_model_dir)
+        
+        # 生成新的 avatar_id（基于新视频路径）
+        video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
+        video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
+        new_auto_avatar_id = f"avatar_{video_basename}_{video_hash}"
+        logger.info(f"New avatar_id: {new_auto_avatar_id}")
+        
+        # 重新创建 avatar 实例（强制重新准备数据）
+        self.avatar = MuseAvatarV15(
+            avatar_id=new_auto_avatar_id,
+            video_path=new_video_path,
+            bbox_shift=0,
+            batch_size=handler_config.batch_size,
+            force_preparation=True,  # 强制重新处理新视频，忽略旧缓存
+            parsing_mode="jaw",
+            left_cheek_width=90,
+            right_cheek_width=90,
+            audio_padding_length_left=2,
+            audio_padding_length_right=2,
+            fps=handler_config.fps,
+            version="v15",
+            result_dir=result_dir,
+            extra_margin=10,
+            vae_type=vae_type,
+            unet_model_path=unet_model_path,
+            unet_config=unet_config,
+            whisper_dir=whisper_dir,
+            gpu_id=0,
+            debug=handler_config.debug
+        )
+        
+        # 重新创建 processor 实例
+        self.processor = AvatarMuseTalkProcessor(
+            self.avatar,
+            handler_config
+        )
         
         self.shared_state = session_context.shared_states
         self.processor.audio_output_queue = self.audio_out_queue
