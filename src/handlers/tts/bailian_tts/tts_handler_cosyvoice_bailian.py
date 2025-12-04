@@ -137,7 +137,7 @@ class HandlerTTS(HandlerBase, ABC):
         #     print(f"错误：用户ID不能为空且必须是字符串（当前输入：{user_id}）")
         #     return None
         
-        settings_file = "/core/dt_avatar/code/VoiceSelector/user_settings.json"
+        settings_file = "/core/dt_avatar/code/OpenAvatarSetting/user_settings.json"
 
         # 2. 检查文件是否存在
         if not os.path.exists(settings_file):
