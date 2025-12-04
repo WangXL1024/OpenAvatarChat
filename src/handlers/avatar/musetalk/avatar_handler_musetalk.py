@@ -283,6 +283,9 @@ class HandlerAvatarMusetalk(HandlerBase):
         logger.info(f"HandlerAvatarMusetalk.create_context called, session_context={session_context}, handler_config={handler_config}")
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
+        print("*******************************")
+        print(self.processor._avatar.__dict__)
+        print("*******************************")
         self.shared_state = session_context.shared_states
         self.processor.audio_output_queue = self.audio_out_queue
         self.processor.video_output_queue = self.video_out_queue
