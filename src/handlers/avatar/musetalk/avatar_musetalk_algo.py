@@ -248,7 +248,6 @@ class MuseAvatarV15:
             # If directory exists but needs regeneration, delete it first
             if os.path.exists(self.avatar_path):
                 shutil.rmtree(self.avatar_path)
-            print(f"<><><><><><><>><<><><<{self.avatar_path}<><><><><><><><><><><><>>")
             # Create required directories
             osmakedirs([self.avatar_path, self.full_imgs_path, self.video_out_path, self.mask_out_path])
             # Generate data
