@@ -275,29 +275,31 @@ class HandlerAvatarMusetalk(HandlerBase):
 
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
-        # handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        # self.load('',handler_config)
+        handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        self.avatar = None
+        self.processor = None
+        self.load('',handler_config)
         """
         Create and start session context.
         """
         logger.info(f"HandlerAvatarMusetalk.create_context called, session_context={session_context}, handler_config={handler_config}")
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
-        print("*******************************")
-        print(self.processor._avatar.avatar_id)
-        print(self.processor._avatar.video_path)
-        print(self.processor._avatar.result_dir)
-        print(self.processor._avatar.vae_type)
-        print(self.processor._avatar.unet_model_path)
-        print(self.processor._avatar.unet_config)
-        print(self.processor._avatar.whisper_dir)
-        print("*******************************")
-        new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        new_video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
-        new_video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
-        new_auto_avatar_id = f"avatar_{new_video_basename}_{new_video_hash}"
-        self.processor._avatar.avatar_id = new_auto_avatar_id
-        self.processor._avatar.video_path = new_video_path
+        # print("*******************************")
+        # print(self.processor._avatar.avatar_id)
+        # print(self.processor._avatar.video_path)
+        # print(self.processor._avatar.result_dir)
+        # print(self.processor._avatar.vae_type)
+        # print(self.processor._avatar.unet_model_path)
+        # print(self.processor._avatar.unet_config)
+        # print(self.processor._avatar.whisper_dir)
+        # print("*******************************")
+        # new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        # new_video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
+        # new_video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
+        # new_auto_avatar_id = f"avatar_{new_video_basename}_{new_video_hash}"
+        # self.processor._avatar.avatar_id = new_auto_avatar_id
+        # self.processor._avatar.video_path = new_video_path
         
         self.shared_state = session_context.shared_states
         self.processor.audio_output_queue = self.audio_out_queue
