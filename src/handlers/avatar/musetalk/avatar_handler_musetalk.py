@@ -292,6 +292,13 @@ class HandlerAvatarMusetalk(HandlerBase):
         print(self.processor._avatar.unet_config)
         print(self.processor._avatar.whisper_dir)
         print("*******************************")
+        new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
+        new_video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
+        new_video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
+        new_auto_avatar_id = f"avatar_{new_video_basename}_{new_video_hash}"
+        self.processor._avatar.avatar_id = new_auto_avatar_id
+        self.processor._avatar.video_path = new_video_path
+        
         self.shared_state = session_context.shared_states
         self.processor.audio_output_queue = self.audio_out_queue
         self.processor.video_output_queue = self.video_out_queue
