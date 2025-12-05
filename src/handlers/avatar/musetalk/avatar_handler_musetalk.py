@@ -393,7 +393,8 @@ class HandlerAvatarMusetalk(HandlerBase):
         
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
-            
+
+        handler_config.avatar_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Male.mp4"    
         # Check if avatar video path is provided
         if not handler_config.avatar_video_path:
             logger.error(f"No avatar video path provided for session {session_context.session_info.session_id}")
