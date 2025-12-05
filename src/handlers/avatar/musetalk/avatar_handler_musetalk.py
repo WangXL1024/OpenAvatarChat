@@ -113,7 +113,8 @@ class AvatarMuseTalkContext(HandlerContext):
         video_path = self.config.avatar_video_path
         video_basename = os.path.splitext(os.path.basename(video_path))[0]
         video_hash = hashlib.md5(video_path.encode()).hexdigest()[:8]
-        auto_avatar_id = f"avatar_{video_basename}_{video_hash}_{self.session_id}"
+        # auto_avatar_id = f"avatar_{video_basename}_{video_hash}_{self.session_id}"
+        auto_avatar_id = f"avatar_{video_basename}_{video_hash}"
         logger.info(f"Auto generated avatar_id: {auto_avatar_id}")
         
         try:
