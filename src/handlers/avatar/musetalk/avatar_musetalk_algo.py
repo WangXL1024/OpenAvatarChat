@@ -186,7 +186,7 @@ class MuseAvatarV15:
 
         # Check if data needs to be generated
         need_preparation = self.force_preparation  # If force regeneration, set to True
-        print(">>>>>>>>>>>>need_preparation<<<<<<<<<<<<<<<<<<:", need_preparation)
+        
         if not need_preparation and os.path.exists(self.avatar_path):
             # Check if all required files exist
             for file_path in required_files:
@@ -236,7 +236,8 @@ class MuseAvatarV15:
             )
         else:
             self.fp = FaceParsing()
-            
+        
+        print(">>>>>>>>>>>>need_preparation<<<<<<<<<<<<<<<<<<:", need_preparation)    
         # 3. Prepare or load data
         if need_preparation:
             logger.info("*********************************")
