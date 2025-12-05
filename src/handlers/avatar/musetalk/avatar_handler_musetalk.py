@@ -30,7 +30,9 @@ class AvatarMuseTalkContext(HandlerContext):
     """
     Context class for MuseTalk avatar handler
     """
-    def __init__(self, session_id: str, event_in_queue: queue.Queue, event_out_queue: queue.Queue, audio_out_queue: queue.Queue, video_out_queue: queue.Queue, shared_status):
+    def __init__(self, session_id: str, event_in_queue: queue.Queue, event_out_queue: queue.Queue, 
+                 audio_out_queue: queue.Queue, video_out_queue: queue.Queue, shared_status,
+                 handler_config: AvatarMuseTalkConfig, output_data_definitions: Dict[ChatDataType, DataBundleDefinition]):
         """
         Initialize the context for the MuseTalk avatar handler.
         This context manages the communication queues, configuration, and output threads for audio/video/events.
@@ -41,19 +43,31 @@ class AvatarMuseTalkContext(HandlerContext):
             audio_out_queue (queue.Queue): Queue for outgoing audio data.
             video_out_queue (queue.Queue): Queue for outgoing video data.
             shared_status: Shared state object for VAD and other flags.
+            handler_config (AvatarMuseTalkConfig): Handler configuration for this session.
+            output_data_definitions (Dict[ChatDataType, DataBundleDefinition]): Output data definitions.
         """
         super().__init__(session_id)
-        self.config: Optional[AvatarMuseTalkConfig] = None  # Handler configuration
+        self.config: Optional[AvatarMuseTalkConfig] = handler_config  # Handler configuration
+        self.output_data_definitions = output_data_definitions  # Output data definitions
         self.event_in_queue: queue.Queue = event_in_queue  # Event input queue
         self.audio_out_queue: queue.Queue = audio_out_queue  # Audio output queue
         self.video_out_queue: queue.Queue = video_out_queue  # Video output queue
         self.event_out_queue: queue.Queue = event_out_queue  # Event output queue
         self.shared_state = shared_status  # Shared state for VAD, etc.
         self.input_slice_context = None  # Audio slicing context for segmenting input audio
-        self.output_data_definitions: Dict[ChatDataType, DataBundleDefinition] = {}  # Output data definitions
+        
+        # Avatar and processor instances (session-specific)
+        self.avatar: Optional[MuseAvatarV15] = None
+        self.processor: Optional[AvatarMuseTalkProcessor] = None
+        
+        # Thread control
         self.media_out_thread: threading.Thread = None  # Thread for outputting media
         self.event_out_thread: threading.Thread = None  # Thread for outputting events
         self.loop_running = True  # Control flag for threads
+        
+        # Create avatar and processor based on configuration
+        self._create_avatar_and_processor()
+        
         # Start threads for outputting media and events
         try:
             self.media_out_thread = threading.Thread(target=self._media_out_loop)
@@ -65,6 +79,123 @@ class AvatarMuseTalkContext(HandlerContext):
             self.event_out_thread.start()
         except Exception as e:
             logger.opt(exception=True).error(f"Failed to start event_out_thread: {e}")
+            
+        logger.info(f"AvatarMuseTalkContext initialized for session {session_id} with video: {self.config.avatar_video_path}")
+
+    def _create_avatar_and_processor(self):
+        """Create avatar and processor based on configuration"""
+        if self.config is None:
+            logger.error("Handler config is None, cannot create avatar")
+            return
+            
+        # Validate video path
+        if not self.config.avatar_video_path:
+            logger.error("No avatar video path provided in config")
+            return
+            
+        if not os.path.exists(self.config.avatar_video_path):
+            logger.error(f"Avatar video path does not exist: {self.config.avatar_video_path}")
+            # Optionally, use a default video path
+            return
+            
+        logger.info(f"Creating avatar for session {self.session_id} with video: {self.config.avatar_video_path}")
+        
+        # Create avatar
+        project_root = os.getcwd()
+        model_dir = os.path.join(project_root, self.config.model_dir)
+        vae_type = "sd-vae"
+        unet_model_path = os.path.join(model_dir, "musetalkV15", "unet.pth")
+        unet_config = os.path.join(model_dir, "musetalkV15", "musetalk.json")
+        whisper_dir = os.path.join(model_dir, "whisper")
+        result_dir = os.path.join(project_root, self.config.avatar_model_dir)
+        
+        # Auto generate avatar_id (based on video path and session id for uniqueness)
+        video_path = self.config.avatar_video_path
+        video_basename = os.path.splitext(os.path.basename(video_path))[0]
+        video_hash = hashlib.md5(video_path.encode()).hexdigest()[:8]
+        auto_avatar_id = f"avatar_{video_basename}_{video_hash}_{self.session_id}"
+        logger.info(f"Auto generated avatar_id: {auto_avatar_id}")
+        
+        try:
+            self.avatar = MuseAvatarV15(
+                avatar_id=auto_avatar_id,
+                video_path=video_path,
+                bbox_shift=0,
+                batch_size=self.config.batch_size,
+                force_preparation=self.config.force_create_avatar,
+                parsing_mode="jaw",
+                left_cheek_width=90,
+                right_cheek_width=90,
+                audio_padding_length_left=2,
+                audio_padding_length_right=2,
+                fps=self.config.fps,
+                version="v15",
+                result_dir=result_dir,
+                extra_margin=10,
+                vae_type=vae_type,
+                unet_model_path=unet_model_path,
+                unet_config=unet_config,
+                whisper_dir=whisper_dir,
+                gpu_id=0,
+                debug=self.config.debug
+            )
+            
+            # Create processor
+            self.processor = AvatarMuseTalkProcessor(
+                self.avatar,
+                self.config
+            )
+            
+            # Set processor output queues
+            self.processor.audio_output_queue = self.audio_out_queue
+            self.processor.video_output_queue = self.video_out_queue
+            self.processor.event_out_queue = self.event_out_queue
+            
+            logger.info(f"Avatar and processor created successfully for session {self.session_id}")
+            
+        except Exception as e:
+            logger.opt(exception=True).error(f"Failed to create avatar and processor: {e}")
+            self.avatar = None
+            self.processor = None
+
+    def update_avatar(self, new_config: AvatarMuseTalkConfig) -> bool:
+        """
+        Update avatar with new configuration (e.g., change video source)
+        
+        Args:
+            new_config (AvatarMuseTalkConfig): New configuration
+            
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        logger.info(f"Updating avatar for session {self.session_id} with new video: {new_config.avatar_video_path}")
+        
+        # Validate new video path
+        if not new_config.avatar_video_path or not os.path.exists(new_config.avatar_video_path):
+            logger.error(f"New avatar video path is invalid or does not exist: {new_config.avatar_video_path}")
+            return False
+            
+        # Stop current processor
+        if self.processor:
+            self.processor.stop()
+            
+        # Clear current avatar
+        self.avatar = None
+        
+        # Update configuration
+        self.config = new_config
+        
+        # Create new avatar and processor
+        self._create_avatar_and_processor()
+        
+        # Start new processor
+        if self.processor:
+            self.processor.start()
+            logger.info(f"Avatar updated successfully for session {self.session_id}")
+            return True
+        else:
+            logger.error(f"Failed to create new avatar and processor for session {self.session_id}")
+            return False
 
     def return_data(self, data: np.ndarray, chat_data_type: ChatDataType) -> None:
         """
@@ -129,14 +260,14 @@ class AvatarMuseTalkContext(HandlerContext):
                     logger.opt(exception=True).error(f"Exception when getting video data: {e}")
             if no_output:
                 time.sleep(0.01)
-        logger.info("Media out loop exit")
+        logger.info(f"Media out loop exit for session {self.session_id}")
 
     def _event_out_loop(self) -> None:
         """
         Continuously output event data from queue.
         This thread checks the event output queue and updates shared state if needed.
         """
-        logger.info("Event out loop started")
+        logger.info(f"Event out loop started for session {self.session_id}")
         while self.loop_running:
             try:
                 event = self.event_out_queue.get(timeout=0.1)
@@ -151,24 +282,45 @@ class AvatarMuseTalkContext(HandlerContext):
                 continue
             except Exception as e:
                 logger.opt(exception=True).error(f"Exception: {e}")
-        logger.info("Event out loop exit")
+        logger.info(f"Event out loop exit for session {self.session_id}")
     
     def clear(self) -> None:
         """
         Clean up context and stop threads.
         Signals threads to exit and joins them.
         """
-        logger.info("Clear musetalk context")
+        logger.info(f"Clear musetalk context for session {self.session_id}")
         self.loop_running = False
+        
+        # Stop processor
+        if self.processor:
+            self.processor.stop()
+            
+        # Stop event processing
         self.event_in_queue.put_nowait(Tts2FaceEvent.STOP)
+        
+        # Join threads
         try:
-            self.media_out_thread.join(timeout=5)
+            if self.media_out_thread:
+                self.media_out_thread.join(timeout=5)
+                if self.media_out_thread.is_alive():
+                    logger.warning(f"Media out thread did not exit in time for session {self.session_id}")
         except Exception as e:
             logger.opt(exception=True).error(f"Failed to join media_out_thread: {e}")
         try:
-            self.event_out_thread.join(timeout=5)
+            if self.event_out_thread:
+                self.event_out_thread.join(timeout=5)
+                if self.event_out_thread.is_alive():
+                    logger.warning(f"Event out thread did not exit in time for session {self.session_id}")
         except Exception as e:
             logger.opt(exception=True).error(f"Failed to join event_out_thread: {e}")
+            
+        # Clear avatar resources if needed
+        self.avatar = None
+        self.processor = None
+        
+        logger.info(f"Context cleared for session {self.session_id}")
+
 
 class HandlerAvatarMusetalk(HandlerBase):
     def __init__(self) -> None:
@@ -176,15 +328,8 @@ class HandlerAvatarMusetalk(HandlerBase):
         Initialize MuseTalk avatar handler.
         """
         super().__init__()
-        self.processor: Optional[AvatarMuseTalkProcessor] = None
-        self.avatar: Optional[MuseAvatarV15] = None
-        self.audio_input_thread = None
-        self.event_in_queue = queue.Queue()
-        self.event_out_queue = queue.Queue()
-        self.audio_out_queue = queue.Queue()
-        self.video_out_queue = queue.Queue()
+        # Remove global avatar and processor instances
         self.output_data_definitions: Dict[ChatDataType, DataBundleDefinition] = {}
-        self.shared_state = None
         self._debug_cache = {}
 
     def _save_debug_cache(self, speech_id: str, debug_root: str) -> None:
@@ -210,10 +355,13 @@ class HandlerAvatarMusetalk(HandlerBase):
 
     def load(self, engine_config: ChatEngineConfigModel, handler_config: Optional[AvatarMuseTalkConfig] = None):
         """
-        Load and initialize model and processor, setup output data structure.
+        Load and setup output data structure.
+        Note: We no longer create avatar and processor here, only setup output definitions.
         """
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
+            
+        # Setup output data definitions (these are configuration-dependent but not avatar-dependent)
         audio_output_definition = DataBundleDefinition()
         audio_output_definition.add_entry(DataBundleEntry.create_audio_entry(
             "avatar_muse_audio",
@@ -222,6 +370,7 @@ class HandlerAvatarMusetalk(HandlerBase):
         ))
         audio_output_definition.lockdown()
         self.output_data_definitions[ChatDataType.AVATAR_AUDIO] = audio_output_definition
+        
         video_output_definition = DataBundleDefinition()
         video_output_definition.add_entry(DataBundleEntry.create_framed_entry(
             "avatar_muse_video",
@@ -231,142 +380,52 @@ class HandlerAvatarMusetalk(HandlerBase):
         ))
         video_output_definition.lockdown()
         self.output_data_definitions[ChatDataType.AVATAR_VIDEO] = video_output_definition
-        project_root = os.getcwd()
-        model_dir = os.path.join(project_root, handler_config.model_dir)
-        vae_type = "sd-vae"
-        unet_model_path = os.path.join(model_dir, "musetalkV15", "unet.pth")
-        unet_config = os.path.join(model_dir, "musetalkV15", "musetalk.json")
-        whisper_dir = os.path.join(model_dir, "whisper")
-        result_dir = os.path.join(project_root, handler_config.avatar_model_dir)
-        # auto generate avatar_id
-        video_path = handler_config.avatar_video_path
-        video_basename = os.path.splitext(os.path.basename(video_path))[0]
-        video_hash = hashlib.md5(video_path.encode()).hexdigest()[:8]
-        auto_avatar_id = f"avatar_{video_basename}_{video_hash}"
-        logger.info(f"Auto generated avatar_id: {auto_avatar_id}")
         
-        self.avatar = MuseAvatarV15(
-            avatar_id=auto_avatar_id,
-            video_path=handler_config.avatar_video_path,
-            bbox_shift=0,
-            batch_size=handler_config.batch_size,
-            force_preparation=handler_config.force_create_avatar,
-            parsing_mode="jaw",
-            left_cheek_width=90,
-            right_cheek_width=90,
-            audio_padding_length_left=2,
-            audio_padding_length_right=2,
-            fps=handler_config.fps,
-            version="v15",
-            result_dir=result_dir,
-            extra_margin=10,
-            vae_type=vae_type,
-            unet_model_path=unet_model_path,
-            unet_config=unet_config,
-            whisper_dir=whisper_dir,
-            gpu_id=0,
-            debug=handler_config.debug
-        )
-        self.processor = AvatarMuseTalkProcessor(
-            self.avatar,
-            handler_config
-        )
-        logger.info("HandlerAvatarMusetalk loaded and processor initialized.")
+        logger.info("HandlerAvatarMusetalk loaded output data definitions.")
 
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
-        # handler_config.avatar_video_path="/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        # self.load('',handler_config)
         """
         Create and start session context.
+        This is where the avatar is created based on user configuration.
         """
-        logger.info(f"HandlerAvatarMusetalk.create_context called, session_context={session_context}, handler_config={handler_config}")
+        logger.info(f"HandlerAvatarMusetalk.create_context called for session: {session_context.session_info.session_id}")
+        
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
-        # 关键：更新 handler_config 的视频路径（使用新的数字人视频）
-        new_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Female.mp4"
-        handler_config.avatar_video_path = new_video_path  # 覆盖配置中的路径
+            
+        # Check if avatar video path is provided
+        if not handler_config.avatar_video_path:
+            logger.error(f"No avatar video path provided for session {session_context.session_info.session_id}")
+            # Use a default path or return error
+            # For now, we'll use a placeholder
+            handler_config.avatar_video_path = "/default/path/to/video.mp4"
+            
+        # Create independent queues for this session
+        event_in_queue = queue.Queue()
+        event_out_queue = queue.Queue()
+        audio_out_queue = queue.Queue()
+        video_out_queue = queue.Queue()
         
-        # 释放旧实例资源（终止线程、清理缓存）
-        if self.processor is not None:
-            self.processor.stop()  # 调用processor的stop方法终止线程
-            # 额外清理队列（防止stop方法未完全清空）
-            self.processor._clear_queues()
-            # 手动置空所有线程引用（避免循环引用导致GC失败）
-            self.processor._feature_thread = None
-            self.processor._frame_gen_thread = None
-            self.processor._frame_gen_unet_thread = None
-            self.processor._frame_gen_vae_thread = None
-            self.processor._frame_collect_thread = None
-            self.processor._compose_thread = None
-            self.processor = None  # 释放processor实例
-        if self.avatar is not None:
-            # 清理旧数字人的缓存目录（如果需要）
-            if hasattr(self.avatar, 'avatar_path') and os.path.exists(self.avatar.avatar_path):
-                import shutil
-                shutil.rmtree(self.avatar.avatar_path, ignore_errors=True)
-            self.avatar = None
-        
-        # 重新初始化 avatar 和 processor（复用 load 中的逻辑，但避免重复调用 load）
-        project_root = os.getcwd()
-        model_dir = os.path.join(project_root, handler_config.model_dir)
-        vae_type = "sd-vae"
-        unet_model_path = os.path.join(model_dir, "musetalkV15", "unet.pth")
-        unet_config = os.path.join(model_dir, "musetalkV15", "musetalk.json")
-        whisper_dir = os.path.join(model_dir, "whisper")
-        result_dir = os.path.join(project_root, handler_config.avatar_model_dir)
-        
-        # 生成新的 avatar_id（基于新视频路径）
-        video_basename = os.path.splitext(os.path.basename(new_video_path))[0]
-        video_hash = hashlib.md5(new_video_path.encode()).hexdigest()[:8]
-        new_auto_avatar_id = f"avatar_{video_basename}_{video_hash}"
-        logger.info(f"New avatar_id: {new_auto_avatar_id}")
-        
-        # 重新创建 avatar 实例（强制重新准备数据）
-        self.avatar = MuseAvatarV15(
-            avatar_id=new_auto_avatar_id,
-            video_path=new_video_path,
-            bbox_shift=0,
-            batch_size=handler_config.batch_size,
-            force_preparation=True,  # 强制重新处理新视频，忽略旧缓存
-            parsing_mode="jaw",
-            left_cheek_width=90,
-            right_cheek_width=90,
-            audio_padding_length_left=2,
-            audio_padding_length_right=2,
-            fps=handler_config.fps,
-            version="v15",
-            result_dir=result_dir,
-            extra_margin=10,
-            vae_type=vae_type,
-            unet_model_path=unet_model_path,
-            unet_config=unet_config,
-            whisper_dir=whisper_dir,
-            gpu_id=0,
-            debug=handler_config.debug
-        )
-        
-        # 重新创建 processor 实例
-        self.processor = AvatarMuseTalkProcessor(
-            self.avatar,
-            handler_config
-        )
-        
-        self.shared_state = session_context.shared_states
-        self.processor.audio_output_queue = self.audio_out_queue
-        self.processor.video_output_queue = self.video_out_queue
-        self.processor.event_out_queue = self.event_out_queue
+        # Create context (this will create avatar and processor inside)
         context = AvatarMuseTalkContext(
             session_context.session_info.session_id,
-            self.event_in_queue,
-            self.event_out_queue,
-            self.audio_out_queue,
-            self.video_out_queue,
-            self.shared_state
+            event_in_queue,
+            event_out_queue,
+            audio_out_queue,
+            video_out_queue,
+            session_context.shared_states,
+            handler_config,
+            self.output_data_definitions
         )
-        context.output_data_definitions = self.output_data_definitions
-        context.config = handler_config
         
+        # Check if avatar and processor were created successfully
+        if context.avatar is None or context.processor is None:
+            logger.error(f"Failed to create avatar and processor for session {session_context.session_info.session_id}")
+            # In production, you might want to handle this error more gracefully
+            # For now, we'll continue but the avatar won't work
+            
+        # Setup audio slicing context
         output_audio_sample_rate = handler_config.output_audio_sample_rate
         fps = handler_config.fps
         frame_audio_len_float = output_audio_sample_rate / fps
@@ -377,17 +436,24 @@ class HandlerAvatarMusetalk(HandlerBase):
             slice_size=output_audio_sample_rate,
             slice_axis=0,
         )
-        logger.info("Context created and processor started.")
+        
+        logger.info(f"Context created for session {session_context.session_info.session_id} with video: {handler_config.avatar_video_path}")
         return context
 
     def start_context(self, session_context: SessionContext, handler_context: HandlerContext):
         """
-        Start context.
+        Start context and processor.
         """
-        self.processor.start()
-        logger.info("Context started and processor started.")
-        if hasattr(handler_context, 'config') and getattr(handler_context.config, 'debug_replay_speech_id', None):
-            speech_id = handler_context.config.debug_replay_speech_id
+        context = cast(AvatarMuseTalkContext, handler_context)
+        if context.processor:
+            context.processor.start()
+            logger.info(f"Context started and processor started for session {context.session_id}")
+        else:
+            logger.error(f"No processor available for session {context.session_id}")
+            
+        # Debug replay logic
+        if hasattr(context.config, 'debug_replay_speech_id') and getattr(context.config, 'debug_replay_speech_id', None):
+            speech_id = context.config.debug_replay_speech_id
             def _delayed_replay():
                 time.sleep(2)
                 self.replay_handle(speech_id, handler_context)
@@ -463,6 +529,12 @@ class HandlerAvatarMusetalk(HandlerBase):
         if inputs.type != ChatDataType.AVATAR_AUDIO:
             return
         context = cast(AvatarMuseTalkContext, context)
+        
+        # Check if processor is available
+        if context.processor is None:
+            logger.error(f"No processor available for session {context.session_id}")
+            return
+            
         speech_id = inputs.data.get_meta("speech_id")
         speech_end = inputs.data.get_meta("avatar_speech_end", False)
         audio_entry = inputs.data.get_main_definition_entry()
@@ -486,8 +558,8 @@ class HandlerAvatarMusetalk(HandlerBase):
                 audio_data=audio_segment.tobytes(),
                 sample_rate=input_sample_rate
             )
-            if self.processor:
-                self.processor.add_audio(speech_audio)
+            if context.processor:
+                context.processor.add_audio(speech_audio)
         if speech_end:
             # On speech end, flush remaining audio, fill with zeros if empty
             end_segment = context.input_slice_context.flush()
@@ -506,8 +578,8 @@ class HandlerAvatarMusetalk(HandlerBase):
                 audio_data=audio_data,
                 sample_rate=input_sample_rate
             )
-            if self.processor:
-                self.processor.add_audio(speech_audio)
+            if context.processor:
+                context.processor.add_audio(speech_audio)
 
     def _pack_debug_record(self, inputs: ChatData, output_definitions: Dict[ChatDataType, HandlerDataInfo]):
         """
@@ -587,11 +659,5 @@ class HandlerAvatarMusetalk(HandlerBase):
         Clean up and stop processor and related threads.
         """
         if isinstance(context, AvatarMuseTalkContext):
-            if self.processor:
-                self.processor.stop()
-            if self.audio_input_thread:
-                self.audio_input_thread.join()
-                self.audio_input_thread = None
             context.clear()
-
-
+            logger.info(f"Context destroyed for session {context.session_id}")
