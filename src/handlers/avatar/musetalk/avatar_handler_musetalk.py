@@ -22,7 +22,6 @@ from handlers.avatar.musetalk.avatar_musetalk_processor import AvatarMuseTalkPro
 from handlers.avatar.musetalk.avatar_musetalk_algo import MuseAvatarV15
 from handlers.avatar.musetalk.avatar_musetalk_config import AvatarMuseTalkConfig
 from engine_utils.general_slicer import slice_data, SliceContext
-from chat_engine.core.handler_manager import HandlerManager
 
 
 # Context class for MuseTalk avatar handler
@@ -401,7 +400,7 @@ class HandlerAvatarMusetalk(HandlerBase):
             logger.error(f"No avatar video path provided for session {session_context.session_info.session_id}")
             # Use a default path or return error
             # For now, we'll use a placeholder
-            handler_config.avatar_video_path = "/default/path/to/video.mp4"
+            handler_config.avatar_video_path = "src/handlers/avatar/musetalk/MuseTalk/data/video/yongen.mp4"
             
         # Create independent queues for this session
         event_in_queue = queue.Queue()

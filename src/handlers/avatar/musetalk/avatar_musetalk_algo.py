@@ -237,7 +237,6 @@ class MuseAvatarV15:
         else:
             self.fp = FaceParsing()
         
-        print(">>>>>>>>>>>>need_preparation<<<<<<<<<<<<<<<<<<:", need_preparation)    
         # 3. Prepare or load data
         if need_preparation:
             logger.info("*********************************")
