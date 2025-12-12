@@ -111,62 +111,59 @@ class HandlerTTS(HandlerBase, ABC):
 
     # add by wangxl@20251203 for get user voice setting from user_settings.json
     @staticmethod
-    def get_user_setting(user_id: str = "default_user", settings_file: str = "user_settings.json") -> str | None:
+    def get_user_setting(
+        user_id: str = "default_user",
+        field: str = "sound_id",  # 新增参数：指定要获取的字段（sound_id或video_id）
+        settings_file: str = "user_settings.json"
+    ) -> str | None:
         import json
         import os
         """
-        从 user_settings.json 中读取指定用户的配置值（声音ID）
+        从 user_settings.json 中读取指定用户的配置字段（支持sound_id和video_id）
         
         Args:
             user_id: 要查询的用户ID（如 "default_user"）
-            settings_file: 配置文件路径（默认与脚本同级目录）
+            field: 要获取的字段名（支持 "sound_id" 或 "video_id"）
+            settings_file: 配置文件路径
         
         Returns:
-            成功：返回用户对应的声音ID（字符串）
-            失败：返回 None（文件不存在、用户不存在、解析错误等情况）
-        
-        Examples:
-            >>> get_user_setting("default_user")
-            "cosyvoice-v2-cusfemale-2efcf55598404c3ab5779657ddd4ebcc"
-            
-            >>> get_user_setting("non_exist_user")
-            None
+            成功：返回用户对应的字段值（字符串）
+            失败：返回 None（文件不存在、用户不存在、字段不存在等情况）
         """
-        # # 1. 校验用户ID参数（非空）
-        # if not user_id or not isinstance(user_id, str):
-        #     print(f"错误：用户ID不能为空且必须是字符串（当前输入：{user_id}）")
-        #     return None
-        
+        # 固定配置文件路径
         settings_file = "/core/dt_avatar/code/OpenAvatarSetting/user_settings.json"
 
-        # 2. 检查文件是否存在
+        # 检查文件是否存在
         if not os.path.exists(settings_file):
             print(f"警告：配置文件 {settings_file} 不存在")
             return None
         
         try:
-            # 3. 读取并解析JSON文件
+            # 读取并解析JSON文件
             with open(settings_file, "r", encoding="utf-8") as f:
-                # 处理空文件或无效JSON（初始化为空字典）
                 try:
                     settings_data = json.load(f)
                 except json.JSONDecodeError:
-                    print(f"错误：{settings_file} 是无效的JSON文件，已自动初始化为空配置")
-                    # 可选：自动创建空配置文件（避免后续读取报错）
-                    with open(settings_file, "w", encoding="utf-8") as f_write:
-                        json.dump({}, f_write, ensure_ascii=False, indent=2)
+                    print(f"错误：{settings_file} 是无效的JSON文件")
                     return None
             
-            # 4. 检查用户是否存在于配置中
-            if user_id in settings_data:
-                # 返回用户对应的声音ID（确保是字符串格式）
-                sound_id = str(settings_data[user_id])
-                return sound_id
-            else:
+            # 检查用户是否存在
+            if user_id not in settings_data:
                 print(f"警告：用户 {user_id} 不存在于配置文件中")
                 return None
+            
+            user_info = settings_data[user_id]
+            # 检查用户信息是否为字典且包含目标字段
+            if not isinstance(user_info, dict):
+                print(f"警告：用户 {user_id} 的配置格式错误（非字典类型）")
+                return None
+            if field not in user_info:
+                print(f"警告：用户 {user_id} 的配置中不包含 {field} 字段")
+                return None
+            
+            # 返回字段值（确保为字符串）
+            return str(user_info[field])
         
-        # 5. 捕获其他异常（权限不足、文件损坏等）
         except PermissionError:
             print(f"错误：没有读取 {settings_file} 的权限")
             return None
@@ -176,7 +173,7 @@ class HandlerTTS(HandlerBase, ABC):
         
     def handle(self, context: HandlerContext, inputs: ChatData,
                output_definitions: Dict[ChatDataType, HandlerDataInfo]):
-        user_voice = self.get_user_setting("default_user")
+        user_voice = self.get_user_setting("default_user", "sound_id")
         self.voice = user_voice if user_voice is not None else self.voice
         print(f"use the voice id{self.voice}")
         output_definition = output_definitions.get(ChatDataType.AVATAR_AUDIO).definition

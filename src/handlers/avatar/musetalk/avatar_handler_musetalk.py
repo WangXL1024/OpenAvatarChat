@@ -383,6 +383,67 @@ class HandlerAvatarMusetalk(HandlerBase):
         
         logger.info("HandlerAvatarMusetalk loaded output data definitions.")
 
+    @staticmethod
+    def get_user_setting(
+        user_id: str = "default_user",
+        field: str = "sound_id",  # 新增参数：指定要获取的字段（sound_id或video_id）
+        settings_file: str = "user_settings.json"
+    ) -> str | None:
+        import json
+        import os
+        """
+        从 user_settings.json 中读取指定用户的配置字段（支持sound_id和video_id）
+        
+        Args:
+            user_id: 要查询的用户ID（如 "default_user"）
+            field: 要获取的字段名（支持 "sound_id" 或 "video_id"）
+            settings_file: 配置文件路径
+        
+        Returns:
+            成功：返回用户对应的字段值（字符串）
+            失败：返回 None（文件不存在、用户不存在、字段不存在等情况）
+        """
+        # 固定配置文件路径
+        settings_file = "/core/dt_avatar/code/OpenAvatarSetting/user_settings.json"
+
+        # 检查文件是否存在
+        if not os.path.exists(settings_file):
+            print(f"警告：配置文件 {settings_file} 不存在")
+            return None
+        
+        try:
+            # 读取并解析JSON文件
+            with open(settings_file, "r", encoding="utf-8") as f:
+                try:
+                    settings_data = json.load(f)
+                except json.JSONDecodeError:
+                    print(f"错误：{settings_file} 是无效的JSON文件")
+                    return None
+            
+            # 检查用户是否存在
+            if user_id not in settings_data:
+                print(f"警告：用户 {user_id} 不存在于配置文件中")
+                return None
+            
+            user_info = settings_data[user_id]
+            # 检查用户信息是否为字典且包含目标字段
+            if not isinstance(user_info, dict):
+                print(f"警告：用户 {user_id} 的配置格式错误（非字典类型）")
+                return None
+            if field not in user_info:
+                print(f"警告：用户 {user_id} 的配置中不包含 {field} 字段")
+                return None
+            
+            # 返回字段值（确保为字符串）
+            return str(user_info[field])
+        
+        except PermissionError:
+            print(f"错误：没有读取 {settings_file} 的权限")
+            return None
+        except Exception as e:
+            print(f"错误：读取用户配置失败 - {str(e)}")
+            return None
+
     def create_context(self, session_context: SessionContext,
                       handler_config: Optional[AvatarMuseTalkConfig] = None) -> HandlerContext:
         """
@@ -394,7 +455,8 @@ class HandlerAvatarMusetalk(HandlerBase):
         if not isinstance(handler_config, AvatarMuseTalkConfig):
             handler_config = AvatarMuseTalkConfig()
 
-        handler_config.avatar_video_path = "/core/dt_avatar/code/OpenAvatarSetting/static/videos/Male.mp4"    
+        user_video = self.get_user_setting("default_user", "video_id")
+        handler_config.avatar_video_path = f"/core/dt_avatar/code/OpenAvatarSetting/static/videos/{user_video}.mp4"    
         # Check if avatar video path is provided
         if not handler_config.avatar_video_path:
             logger.error(f"No avatar video path provided for session {session_context.session_info.session_id}")
